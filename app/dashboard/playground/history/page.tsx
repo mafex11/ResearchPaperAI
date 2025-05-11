@@ -19,63 +19,65 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Clock, MessageSquare, FileText, Tag } from "lucide-react"
-
-interface ChatHistory {
-  id: string
-  title: string
-  timestamp: string
-  preview: string
-  tags: string[]
-  documents: {
-    id: string
-    name: string
-    type: string
-  }[]
-}
+import { Button } from "@/components/ui/button"
+import { Clock, MessageSquare, Tag, Trash, ExternalLink } from "lucide-react"
+import { useChatHistory, ChatSession } from "@/hooks/useChatHistory"
+import { useRouter } from "next/navigation"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function HistoryPage() {
-  const [chatHistory, setChatHistory] = useState<ChatHistory[]>([])
-
-  useEffect(() => {
-    // TODO: Replace with actual API call to fetch chat history
-    const mockHistory: ChatHistory[] = [
-      {
-        id: "1",
-        title: "AI in Healthcare Research",
-        timestamp: "2024-03-20T10:30:00",
-        preview: "Analysis of AI applications in healthcare delivery systems...",
-        tags: ["Healthcare", "AI", "Research"],
-        documents: [
-          { id: "doc1", name: "medical_ai_paper.pdf", type: "pdf" },
-          { id: "doc2", name: "healthcare_stats.xlsx", type: "excel" }
-        ]
-      },
-      {
-        id: "2",
-        title: "Quantum Mechanics Discussion",
-        timestamp: "2024-03-19T15:45:00",
-        preview: "Comparison of major quantum mechanics theories...",
-        tags: ["Physics", "Quantum", "Theory"],
-        documents: [
-          { id: "doc3", name: "quantum_theory.pdf", type: "pdf" }
-        ]
-      },
-      {
-        id: "3",
-        title: "Social Media Impact Study",
-        timestamp: "2024-03-18T09:15:00",
-        preview: "Examination of social media's role in political movements...",
-        tags: ["Social Media", "Politics", "Analysis"],
-        documents: [
-          { id: "doc4", name: "social_media_data.csv", type: "csv" },
-          { id: "doc5", name: "political_impact.pdf", type: "pdf" }
-        ]
-      }
-    ]
-    setChatHistory(mockHistory)
-  }, [])
-
+  const { history, deleteChat, clearAllHistory } = useChatHistory();
+  const router = useRouter();
+  const { toast } = useToast();
+  
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
+    return date.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+  
+  const handleViewChat = (chat: ChatSession) => {
+    // Future improvement: add a page to view a specific chat
+    // For now, we'll just show a toast
+    toast({
+      title: "View feature coming soon",
+      description: "The ability to view and continue past chats is coming soon",
+    });
+  };
+  
+  const handleDeleteChat = (id: string, event: React.MouseEvent) => {
+    // Prevent event from bubbling up to the card
+    event.stopPropagation();
+    
+    deleteChat(id);
+    toast({
+      title: "Chat deleted",
+      description: "The chat has been removed from your history",
+    });
+  };
+  
+  const handleClearAll = () => {
+    if (history.length === 0) {
+      toast({
+        title: "Nothing to clear",
+        description: "Your history is already empty",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    clearAllHistory();
+    toast({
+      title: "History cleared",
+      description: "All chat history has been removed",
+    });
+  };
+  
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -98,48 +100,93 @@ export default function HistoryPage() {
               </BreadcrumbList>
             </Breadcrumb>
           </div>
+          {history.length > 0 && (
+            <div className="ml-auto pr-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleClearAll}
+                className="flex items-center gap-1"
+              >
+                <Trash className="h-4 w-4" />
+                Clear All
+              </Button>
+            </div>
+          )}
         </header>
         <div className="flex-1 flex flex-col h-[calc(100vh-4rem)] p-6">
           <ScrollArea className="flex-1">
-            <div className="space-y-4">
-              {chatHistory.map((chat) => (
-                <Card key={chat.id} className="hover:bg-accent/50 transition-colors cursor-pointer">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-lg font-semibold">
+            {history.length === 0 ? (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center space-y-3">
+                  <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+                  <h3 className="text-lg font-medium">No chat history yet</h3>
+                  <p className="text-muted-foreground text-sm max-w-xs">
+                    Your saved research conversations will appear here. Start a new chat and save it to see it in your history.
+                  </p>
+                  <Button onClick={() => router.push('/dashboard/playground/chat')} className="mt-2">
+                    Start a New Chat
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {history.map((chat) => (
+                  <Card 
+                    key={chat.id} 
+                    className="hover:bg-accent/50 transition-colors cursor-pointer"
+                    onClick={() => handleViewChat(chat)}
+                  >
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-lg font-semibold">
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="h-4 w-4" />
+                          {chat.title}
+                        </div>
+                      </CardTitle>
                       <div className="flex items-center gap-2">
-                        <MessageSquare className="h-4 w-4" />
-                        {chat.title}
+                        <div className="flex items-center text-sm text-muted-foreground">
+                          <Clock className="h-4 w-4 mr-1" />
+                          {formatDate(chat.timestamp)}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                          onClick={(e) => handleDeleteChat(chat.id, e)}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
                       </div>
-                    </CardTitle>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Clock className="h-4 w-4 mr-1" />
-                      {new Date(chat.timestamp).toLocaleDateString()}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-3">{chat.preview}</p>
-                    
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {chat.tags.map((tag) => (
-                        <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                          <Tag className="h-3 w-3" />
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {chat.documents.map((doc) => (
-                        <Badge key={doc.id} variant="outline" className="flex items-center gap-1">
-                          <FileText className="h-3 w-3" />
-                          {doc.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-3">{chat.preview}</p>
+                      
+                      {chat.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {chat.tags.map((tag) => (
+                            <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+                              <Tag className="h-3 w-3" />
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-end mt-4">
+                        <Button variant="outline" size="sm" className="flex items-center gap-1" onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewChat(chat);
+                        }}>
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          View Conversation
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </ScrollArea>
         </div>
       </SidebarInset>

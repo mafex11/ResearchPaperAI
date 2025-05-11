@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, Upload, Loader2, AlertCircle } from "lucide-react"
+import { Send, Upload, Loader2, AlertCircle, Save } from "lucide-react"
 import { AppSidebar } from "../../../components/app-sidebar"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -21,19 +21,49 @@ import {
     BreadcrumbSeparator,
   } from "@/components/ui/breadcrumb"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { useChatHistory, Message } from "@/hooks/useChatHistory"
+import { useToast } from "@/components/ui/use-toast"
+import { useRouter } from "next/navigation"
 
-
-interface Message {
-  role: "user" | "assistant" | "system" | "error"
-  content: string
-}
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const { saveChat } = useChatHistory()
+  const { toast } = useToast()
+  const router = useRouter()
+
+  // Save chat to history and redirect to history page
+  const handleSaveChat = () => {
+    if (messages.length === 0) {
+      toast({
+        title: "Nothing to save",
+        description: "Start a conversation first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    const chatId = saveChat(messages);
+    
+    // Show success toast
+    toast({
+      title: "Chat saved",
+      description: "Your research conversation has been saved to history",
+    });
+    
+    setIsSaving(false);
+    
+    // Redirect to history page after short delay
+    setTimeout(() => {
+      router.push('/dashboard/playground/history');
+    }, 500);
+  };
 
   // Scroll to bottom whenever messages change
   useEffect(() => {
@@ -129,6 +159,20 @@ export default function ChatPage() {
               </BreadcrumbList>
             </Breadcrumb>
           </div>
+          {messages.length > 0 && (
+            <div className="ml-auto pr-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleSaveChat} 
+                disabled={isSaving || messages.length === 0}
+                className="flex items-center gap-1"
+              >
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Save Chat
+              </Button>
+            </div>
+          )}
         </header>
         <div className="flex-1 flex flex-col h-[calc(100vh-4rem)]">
           {error && (
