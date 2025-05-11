@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 // For production, you should store this in environment variables
 // But for now, we'll use a constant for demonstration purposes
 // In a real application, use process.env.OPENROUTER_API_KEY
-const OPENROUTER_API_KEY = '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';
+const OPENROUTER_API_KEY = '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';
 const SITE_URL = 'https://researchpaper-ai.vercel.app'; // Replace with your actual site URL in production
 const SITE_NAME = 'ResearchPaperAI'; // Replace with your actual site name
 
